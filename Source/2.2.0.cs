@@ -1700,7 +1700,6 @@ namespace KSP_EngineAnalyzer
             // 全局悬浮提示（在所有窗口外部渲染，使用 Event.current.mousePosition 避免 UI 缩放偏移）
             if (Event.current.type == EventType.Repaint && !string.IsNullOrEmpty(GUI.tooltip))
             {
-                Vector2 mousePos = Event.current.mousePosition;
                 GUIContent tipContent = new GUIContent(GUI.tooltip);
                 Vector2 tipSize = GUI.skin.box.CalcSize(tipContent);
                 float tipX = mousePos.x + 15f;
