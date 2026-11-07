@@ -25,3 +25,84 @@ V1.0.0
 4.Add Settings Auto-Save: All settings (language, compact mode, filters, etc.) are automatically saved and restored on next launch.
 5.Add Engine Size Filter: Support filtering engines by size (0.625m, 1.25m, 2.5m, 3.75m).
 6.Add Hidden Engine Marker: Display red [Hidden] marker after engine names to identify unavailable engines.
+
+V2.0.0
+1.RO/RP-1 固推推力曲线支持（如果没有装RO或BetterSRB模组会显示一条直线，但不影响使用）
+2.修复 RO/RP-1 固推点火次数显示 -1
+3.新增引擎详情面板，引擎后面现在有一个“详情”按钮，点击可展开一个全新面板查看引擎具体数据（着重优化固推部分）
+4.重构了UI绘制逻辑，减小性能占用（有点小bug）
+5.修复引擎详情面板切换真空/海平面模式详情报错
+6.修复海平面TWR计算逻辑
+7.紧凑模式引擎列表新增 Isp 显示
+8.分级功能排除 RO 固推燃料罐容积
+9.新增 RO/RP-1 燃料支持，目前可以正常显示RO添加的燃料
+10.修复引擎列表中的缩略信息防止换行
+11.修复固推燃烧时间计算bug
+12.新增固推总冲量计算功能，同步显示在发动机列表与引擎详情页面中
+13.可查看引擎推重比（自身）
+14.添加平均推力计算功能（位于引擎详情中）
+15.增加可过滤废弃、非RO部件功能
+1. Added thrust curve support for RO/RP-1 solid rocket boosters (displays a flat line if RO or BetterSRB is not installed, without affecting core functionality).
+2. Fixed an issue where the ignition count for RO/RP-1 solid rocket boosters incorrectly displayed as -1.
+3. Added an Engine Detail Panel: engines now feature a "Detail" button that opens a new window displaying granular specifications (with dedicated optimizations for SRBs).
+4. Overhauled UI rendering logic to drastically reduce CPU/GPU overhead (minor layout bugs remaining).
+5. Fixed a crash/error that occurred when toggling between Vacuum and Sea Level modes inside the Engine Detail Panel.
+6. Fixed the calculation logic for Sea Level TWR.
+7. Added Isp display to the engine list under Compact Mode.
+8. Excluded RO solid booster fuel tank volumes from the staging/clipping calculation function.
+9. Added support for RO/RP-1 propellants; propellants injected by RO can now be displayed correctly.
+10. Fixed a formatting issue to prevent text wrapping in the engine list summary fields.
+11. Fixed a bug in the calculation of solid rocket booster burn time.
+12. Added total impulse calculation for solid rocket boosters, dynamically displayed in both the engine list and the Detail Panel.
+13. Added display for the engine's dry/bare Thrust-to-Weight Ratio (TWR (Engine Only)).
+14. Added average thrust calculation for solid rocket boosters (displayed inside the Detail Panel).
+15. Added filter options to exclude deprecated and non-RO parts from the engine list.
+
+V2.1.0
+1. 将手动输入的中文/英文 UI 按钮迁移到 KSP 的原生本地化系统。
+2. 通过将筛选行重构为自适应的网格布局，修复了 UI 标签冲突和重叠的问题。
+3. 为缩写按钮（例如“无依赖”、“仅 RO”）实现了简洁的原生鼠标悬停提示，以提供清晰的操作说明。
+4. 重构了窗口重绘和拖拽逻辑，彻底修复了窗口底部缩放/闪烁的错误。
+5. 集成了 KSP 的官方应用程序启动器工具栏系统（添加了一个自定义的 64x64 透明图标按钮，用于简洁地切换用户界面）。
+6. 使用动态物理 AttachNode 和模型边界框扫描算法重新设计了零件尺寸筛选器，彻底解决了组件分类失败的问题。
+7. 优化了反向规划模式下的最小推重比（Min TWR）显示逻辑，避免布局和数值混乱。
+8. 修复了之前导致引擎详情面板元素压缩成 1 像素簇或窗口拖动卡死的多窗口矩阵堆叠冲突问题。
+9. 新增了 MechJeb 风格的行星下拉菜单，采用紧凑的 ScrollView 框架，支持基于任意自定义天体的局部重力和大气密度，在各种星系包（JNSQ/OPM/Sol/RSS）中实时动态计算 dV 和 TWR。
+1. Migrated manually entered Chinese/English UI buttons to KSP's native localization system.
+2. Fixed UI label conflicts and overlaps by refactoring filter rows to an adaptive grid layout.
+3. Implemented concise native mouse hover tooltips for abbreviation buttons (e.g., "No Dependencies," "RO Only") to provide clear instructions.
+4. Refactored window redraw and drag logic, completely fixing the window bottom scaling/flickering bug.
+5. Integrated KSP's official application launcher toolbar system (added a custom 64x64 transparent icon button for easy user interface switching).
+6. Redesigned the part size filter using dynamic physics AttachNode and model bounding box scanning algorithms, completely resolving component classification failures.
+7. Optimized the minimum push-weight ratio (Min TWR) display logic in reverse programming mode to avoid layout and numerical confusion.
+8. Fixed a previous multi-window matrix stacking conflict issue that caused engine details panel elements to be compressed into 1-pixel clusters or window dragging to freeze. 9. A MechJeb-style planetary dropdown menu has been added, employing a compact ScrollView framework. It supports real-time dynamic calculation of dV and TWR in various galaxy packages (JNSQ/OPM/Sol/RSS) based on the local gravity and atmospheric density of any custom celestial body.
+
+V2.2.0
+1.修复已知bug。|Fixed known bugs.
+2.修复引擎存在多种配置下的计算问题。|Fixed calculation issues with the engine under various configurations.
+3.增加燃料筛选功能|Add fuel filter function 
+ -Strict Mode：Strict: Only show engines using ALL selected fuel categories
+ -Loose Mode：Show engines using ANY selected fuel category
+ -Cryogenic：LqdOxygen, LqdFluorine, LqdHydrogen, LqdMethane, LqdNitrogen
+ -Storable：Aerozine50, AK20, AK27, MMH, NTO, Kerosene, HTP
+ -Hydrocarbon / Alcohol：Kerosene, LqdMethane, Ethanol, Methanol
+ -Hydrazines / Amines：Hydrazine, MMH, UDMH, Aerozine50, Aniline
+ -Oxidizers：LqdOxygen, NTO, MON1, MON3, MON10, AK20, AK27, LqdFluorine, OF2
+ -Hypergolic：MMH, UDMH, NTO, MON, Aerozine50, IRFNA
+ -Monopropellant：Hydrazine, HTP
+ -Solid：HTPB, PBAN, PSPC
+
+V2.2.0.1 (stock fork: github.com/Void-Seeker/KSP-EngineAnalyzer, branch stock)
+1.无需真实燃料（RealFuels）也能正常使用；安装了RealFuels时行为与原版相同。
+2.燃料筛选：按发动机实际使用的推进剂分类（液体燃料、氧化剂、单组元等），按使用数量排序。
+3.燃料质量与容积按升计算：原版单位（液体燃料/氧化剂/单组元/固体燃料每单位5升，氙气0.1升）不再导致质量偏差5倍；离子发动机不再把电力算入混合密度。
+4.同步VAB数据/锁定当前分级：从原版油箱读取容积（不计指令舱的单组元）。
+5.同步全重不再包含当前分级油箱中的推进剂（原版油箱在VAB中默认装满，原先被重复计算，Δv偏低）。
+6.源代码可编译：删除重复声明的mousePos；增加build.sh与AssemblyInfo.cs。
+1.Works without Real Fuels; with Real Fuels installed it behaves as upstream.
+2.Fuel filter: one category per propellant the engines burn (Liquid Fuel, Oxidizer, Monopropellant, ...), most used first.
+3.Fuel mass and volume per liter: stock units (5 L for LiquidFuel/Oxidizer/MonoPropellant/SolidFuel, 0.1 L for XenonGas) no longer put fuel mass 5x off; ion engines no longer count Electric Charge in the mix density.
+4.Sync VAB Data / Lock Current Stage read the volume of stock tanks (a command pod's monopropellant isn't counted).
+5.Sync Mass leaves out the propellant in the current stage's tanks (stock tanks come full in the VAB, so it counted twice and delta-v came out too low).
+6.The source builds: duplicate mousePos declaration removed; build.sh and AssemblyInfo.cs added.
+

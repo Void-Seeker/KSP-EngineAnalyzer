@@ -1,4 +1,11 @@
 # KSP EngineAnalyzer 
+> **Stock fork** (branch `stock`) of [Iftn1/KSP-EngineAnalyzer](https://github.com/Iftn1/KSP-EngineAnalyzer) V2.2.0 that works without Real Fuels.
+> - **Fuel filter:** one category per propellant the engines burn.
+> - **Stock units:** fuel mass and volume are worked out in liters from stock units (5 L per unit of LiquidFuel, Oxidizer, MonoPropellant or SolidFuel; 0.1 L per unit of XenonGas).
+> - **Stage tools:** Sync / Lock stage read stock tank volume, and Sync Mass leaves out the stage's own propellant.
+>
+> With Real Fuels installed it behaves as upstream. Build: `./build.sh` (Roslyn from the .NET SDK, against the installed game; `KSP=` sets the game folder). See `GameData/EngineAnalyzer/ChangeLogs.txt`, V2.2.0.1.
+
 An advanced engine screening and planning tool built for Kerbal Space Program (KSP). It uses mathematical simulations to recommend the most suitable engines for your current spacecraft. 
  <img width="1254" height="1254" alt="BA305B7F4FF7E5A1F43EFE3C29D9E472" src="https://github.com/user-attachments/assets/5953daab-0aba-46e7-a699-918ddb80c042" />
 

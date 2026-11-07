@@ -101,6 +101,8 @@ namespace KSP_EngineAnalyzer
         private List<float> lockedWetMasses = new List<float>();
         private List<float> lockedDryMasses = new List<float>();
         private List<float> lockedVolumes = new List<float>();
+        // stock fork: tank propellant mass on the ship at each "Lock current stage" (SyncCurrentStage)
+        private List<float> lockedFuelMasses = new List<float>();
 
         private List<EnginePartGroup> allGroupsCache = new List<EnginePartGroup>();
         private List<EnginePartGroup> filteredGroups = new List<EnginePartGroup>();
@@ -162,6 +164,7 @@ namespace KSP_EngineAnalyzer
         private void InitFuelCategories()
         {
             if (fuelCategories.Count > 0) return;
+            if (!HasRealFuels) { InitStockFuelCategories(); return; }
             fuelCategories.Add(new FuelCategory(L("#engineAnalyzer_fuelCat_Cryogenic"), L("#engineAnalyzer_fuelCat_CryogenicTip"),
                 "LqdOxygen", "LqdFluorine", "LqdHydrogen", "LqdMethane", "LqdNitrogen"));
             fuelCategories.Add(new FuelCategory(L("#engineAnalyzer_fuelCat_Storable"), L("#engineAnalyzer_fuelCat_StorableTip"),
@@ -178,6 +181,111 @@ namespace KSP_EngineAnalyzer
                 "Hydrazine", "HTP"));
             fuelCategories.Add(new FuelCategory(L("#engineAnalyzer_fuelCat_Solid"), L("#engineAnalyzer_fuelCat_SolidTip"),
                 "HTPB", "PBAN", "PSPC"));
+        }
+
+        // ---- Stock fork: Engine Analyzer without Real Fuels ----
+        // Real Fuels counts resources in liters and keeps a tank's volume in ModuleFuelTanks. Stock
+        // units are 5 L (LiquidFuel, Oxidizer, MonoPropellant, SolidFuel) or 0.1 L (XenonGas), and
+        // stock tanks have no volume module, so without Real Fuels the volumes and densities come
+        // from the resource definitions. With Real Fuels installed, all of this is skipped.
+
+        private static bool? hasRealFuels;
+        private static bool HasRealFuels
+        {
+            get
+            {
+                if (hasRealFuels == null)
+                    hasRealFuels = AssemblyLoader.loadedAssemblies.Any(a => a.name == "RealFuels");
+                return hasRealFuels.Value;
+            }
+        }
+
+        // Fuel filter: one category per propellant the engines burn, most used first (the Real
+        // Fuels categories name only Real Fuels propellants, so each would hide every stock engine).
+        private void InitStockFuelCategories()
+        {
+            var uses = new Dictionary<string, int>();
+            foreach (AvailablePart ap in PartLoader.LoadedPartsList)
+            {
+                var eng = FindEngineModule(ap);
+                if (eng?.propellants == null) continue;
+                foreach (string n in eng.propellants.Where(p => !string.IsNullOrEmpty(p?.name)).Select(p => p.name).Distinct())
+                    uses[n] = uses.TryGetValue(n, out int k) ? k + 1 : 1;
+            }
+            foreach (var u in uses.OrderByDescending(u => u.Value).ThenBy(u => u.Key))
+            {
+                string shown = PartResourceLibrary.Instance.GetDefinition(u.Key)?.displayName;
+                if (string.IsNullOrEmpty(shown)) shown = u.Key;
+                fuelCategories.Add(new FuelCategory(shown, Localizer.Format("#engineAnalyzer_fuelCat_StockTip", shown, u.Value), u.Key));
+            }
+        }
+
+        // Mix density in t per liter: sum(ratio * density) / sum(ratio * liters per unit) over the
+        // propellants with mass that count for Isp (not IntakeAir or ElectricCharge); 0 if none.
+        private static float MixDensityPerLiter(IEnumerable<Propellant> propellants)
+        {
+            double tons = 0, liters = 0;
+            foreach (var p in propellants)
+            {
+                if (p == null || p.ignoreForIsp || p.ratio <= 0) continue;
+                var def = PartResourceLibrary.Instance.GetDefinition(p.name);
+                if (def == null || def.density <= 0 || def.volume <= 0) continue;
+                tons += p.ratio * (double)def.density;
+                liters += p.ratio * (double)def.volume;
+            }
+            return liters > 0 ? (float)(tons / liters) : 0f;
+        }
+
+        // Propellants that fill a stage's tanks: burnt by an engine (any mode), with mass, able to
+        // flow, and counting for Isp (so not SolidFuel, IntakeAir or ElectricCharge).
+        private static HashSet<string> stockTankResources;
+        private static HashSet<string> StockTankResources
+        {
+            get
+            {
+                if (stockTankResources != null) return stockTankResources;
+                var set = new HashSet<string>();
+                foreach (AvailablePart ap in PartLoader.LoadedPartsList)
+                {
+                    if (ap?.partPrefab == null) continue;
+                    foreach (var eng in ap.partPrefab.FindModulesImplementing<ModuleEngines>())
+                    {
+                        if (eng.propellants == null) continue;
+                        foreach (var p in eng.propellants)
+                        {
+                            if (p == null || p.ignoreForIsp || p.name == "IntakeAir") continue;
+                            var def = PartResourceLibrary.Instance.GetDefinition(p.name);
+                            if (def != null && def.density > 0 && def.resourceFlowMode != ResourceFlowMode.NO_FLOW)
+                                set.Add(p.name);
+                        }
+                    }
+                }
+                return stockTankResources = set;
+            }
+        }
+
+        // The ship's tank propellants. Command parts don't count: a pod's monopropellant isn't stage fuel.
+        private IEnumerable<PartResource> StockTankResourcesOnShip()
+        {
+            var parts = EditorLogic.fetch?.ship?.Parts;
+            if (parts == null) yield break;
+            foreach (Part p in parts)
+            {
+                if (p?.Resources == null || p.FindModuleImplementing<ModuleCommand>() != null) continue;
+                foreach (PartResource r in p.Resources)
+                    if (r?.info != null && StockTankResources.Contains(r.info.name))
+                        yield return r;
+            }
+        }
+
+        // Propellant mass in the ship's tanks (0 with Real Fuels: SyncCurrentStage stays as it was).
+        private float GetShipTankFuelMass()
+        {
+            if (HasRealFuels) return 0f;
+            double tons = 0;
+            foreach (var r in StockTankResourcesOnShip())
+                tons += r.amount * r.info.density;
+            return (float)tons;
         }
 
         private void Awake()
@@ -814,6 +922,7 @@ namespace KSP_EngineAnalyzer
                 lockedWetMasses.Clear();
                 lockedDryMasses.Clear();
                 lockedVolumes.Clear();
+                lockedFuelMasses.Clear();
             }
             lastPartCount = currentParts;
         }
@@ -824,6 +933,13 @@ namespace KSP_EngineAnalyzer
         private float GetShipTotalVolumeKL()
         {
             if (EditorLogic.fetch?.ship == null) return 0f;
+            if (!HasRealFuels)
+            {
+                double liters = 0;
+                foreach (var r in StockTankResourcesOnShip())
+                    liters += r.maxAmount * r.info.volume;
+                return (float)(liters / 1000);
+            }
             float totalLiters = 0f;
             foreach (Part p in EditorLogic.fetch.ship.Parts)
             {
@@ -859,7 +975,11 @@ namespace KSP_EngineAnalyzer
         {
             float totalWet = GetShipTotalMass();
             float totalVol = GetShipTotalVolumeKL();
-            vesselMassAtSync = totalWet;
+            // Stock tanks come full in the editor: this stage's propellant (what's in the tanks
+            // beyond the last lock) isn't dry mass, as the volume is refilled with each engine's
+            // propellant. 0 with Real Fuels.
+            float prevFuel = lockedFuelMasses.Count > 0 ? lockedFuelMasses.Max() : 0f;
+            vesselMassAtSync = totalWet - Math.Max(GetShipTankFuelMass() - prevFuel, 0f);
             float prevWet = lockedWetMasses.Count > 0 ? lockedWetMasses.Max() : 0f;
             float prevVol = lockedVolumes.Count > 0 ? lockedVolumes.Max() : 0f;
             targetVolumeKL = Math.Max(totalVol - prevVol, 0f);
@@ -946,6 +1066,12 @@ namespace KSP_EngineAnalyzer
                             baseMixDensity += (p.ratio / totalRatio) * (def?.density ?? 0.005f);
                             baseFuels.Add(def?.displayName ?? p.name);
                         }
+                    }
+                    if (!HasRealFuels)
+                    {
+                        // per unit is per liter only with Real Fuels
+                        float perLiter = MixDensityPerLiter(engineMod.propellants);
+                        if (perLiter > 0f) baseMixDensity = perLiter;
                     }
 
                     float baseIspVac = engineMod.atmosphereCurve.Evaluate(0f);
@@ -1775,10 +1901,11 @@ namespace KSP_EngineAnalyzer
                 lockedWetMasses.Add(GetShipTotalMass());
                 lockedDryMasses.Add(GetShipDryMass());
                 lockedVolumes.Add(GetShipTotalVolumeKL());
+                lockedFuelMasses.Add(GetShipTankFuelMass());
                 SyncCurrentStage();
                 RefreshData();
             }
-            if (GUILayout.Button(L("#engineAnalyzer_ResetAll"))) { lockedWetMasses.Clear(); lockedDryMasses.Clear(); lockedVolumes.Clear(); vesselMassAtSync = 0; SyncCurrentStage(); RefreshData(); }
+            if (GUILayout.Button(L("#engineAnalyzer_ResetAll"))) { lockedWetMasses.Clear(); lockedDryMasses.Clear(); lockedVolumes.Clear(); lockedFuelMasses.Clear(); vesselMassAtSync = 0; SyncCurrentStage(); RefreshData(); }
             GUILayout.EndHorizontal();
 
             if (lockedWetMasses.Count > 0)
